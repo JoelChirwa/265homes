@@ -25,6 +25,7 @@ type AuthContextValue = {
   refreshSubscriptionStatus: () => Promise<void>;
   setSubscriptionPaid: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  updateProfile: (data: { fullName: string; phone: string; district?: string; email?: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -189,7 +190,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         const updated: User = {
           ...current,
-          subscriptionStatus: response.subscriptionStatus,
+          subscriptionStatus: response.subscriptionStatus as any,
           subscriptionPackage: response.subscriptionPackage as any,
           subscriptionStartAt: response.subscriptionStartAt,
         };
@@ -200,6 +201,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (nextUserJson) {
         await sessionStorage.saveUser(nextUserJson);
       }
+    }
+  }, [user]);
+
+  const updateProfile = useCallback(async (data: { fullName: string; phone: string; district?: string; email?: string }) => {
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    let nextUserJson: string | null = null;
+    setUser((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updated: User = {
+        ...current,
+        ...data,
+      };
+      nextUserJson = JSON.stringify(updated);
+      return updated;
+    });
+
+    if (nextUserJson) {
+      await sessionStorage.saveUser(nextUserJson);
     }
   }, [user]);
 
@@ -216,6 +241,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       refreshSubscriptionStatus,
       setSubscriptionPaid,
       completeOnboarding,
+      updateProfile,
     }),
     [
       completeOnboarding,
@@ -229,6 +255,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSubscriptionPaid,
       token,
       user,
+      updateProfile,
     ],
   );
 

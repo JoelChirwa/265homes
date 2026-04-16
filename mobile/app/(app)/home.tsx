@@ -22,67 +22,82 @@ export default function HomeScreen() {
   if (!user) return null;
 
   const firstName = user.fullName?.split(' ')[0];
+  const limitedListings = user.role === 'tenant' ? visibleListings.slice(0, 20) : visibleListings;
   const hslToHsla = (hsl: string, alpha: number) => {
     // Theme colors are provided as `hsl(...)`. RN supports `hsla(...)` for alpha.
     if (!hsl || typeof hsl !== "string" || !hsl.startsWith("hsl(")) return hsl;
     return hsl.replace(/^hsl\(/, "hsla(").replace(/\)$/, `, ${alpha})`);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   const renderHeader = () => (
     <View style={styles.header}>
         <View style={styles.headerTop}>
             <View>
-                <Text style={[styles.greeting, { color: colors.textSecondary }]}>Hello,</Text>
+                <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
                 <Text style={[styles.userName, { color: colors.textPrimary }]}>{firstName} 👋</Text>
             </View>
-            <Link href="/(app)/profile" asChild>
+            <Link href="/(app)/notifications" asChild>
                 <TouchableOpacity style={[styles.profileButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <FontAwesome name="user-circle" size={24} color={colors.primary} />
+                    <Ionicons name="notifications" size={24} color={colors.primary} />
                 </TouchableOpacity>
             </Link>
         </View>
-
-        <TouchableOpacity 
-            style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/(app)/explore')}
-        >
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={{ marginRight: 10 }} />
-            <Text style={{ color: colors.textSecondary }}>Search by area, price, rooms...</Text>
-        </TouchableOpacity>
     </View>
   );
 
   if (user.role === 'landlord') {
     const landlordListings = myListings(user.id);
+    const sortedListings = [...landlordListings].sort((a, b) => (b.views || 0) - (a.views || 0));
     return (
         <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
             {renderHeader()}
-            
-            <View style={[styles.heroCard, { backgroundColor: colors.primary }]}>
-                <Text style={styles.heroTitle}>Grow your business</Text>
-                <Text style={styles.heroSubtitle}>Each listing you post is verified by GPS for maximum trust.</Text>
-                <Link href="/(app)/post-listing" asChild>
-                    <TouchableOpacity style={styles.heroButton}>
-                        <Text style={{ color: colors.primary, fontWeight: '700' }}>Post a Listing</Text>
-                    </TouchableOpacity>
-                </Link>
-            </View>
 
-            <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Overview</Text>
-                <View style={styles.statsRow}>
-                    <View style={[styles.statItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={[styles.statValue, { color: colors.textPrimary }]}>{landlordListings.length}</Text>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active Listings</Text>
+            <View style={[styles.statsContainer]}>
+            <View style={styles.statsRow}>
+                <View style={[styles.statItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                        <Ionicons name="home" size={24} color={colors.primary} />
                     </View>
-                    <View style={[styles.statItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={[styles.statValue, { color: colors.textPrimary }]}>0</Text>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Inquiries</Text>
+                    <Text style={[styles.statValue, { color: colors.textPrimary }]}>{landlordListings.length}</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active Listings</Text>
+                </View>
+                <View style={[styles.statItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                        <Ionicons name="chatbubble" size={24} color={colors.primary} />
                     </View>
+                    <Text style={[styles.statValue, { color: colors.textPrimary }]}>0</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Inquiries</Text>
                 </View>
             </View>
+        </View>
 
-            <Button title="Manage My Listings" onPress={() => router.push('/(app)/my-listings')} style={{ backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary }} textStyle={{ color: colors.primary }} />
+            {sortedListings.length > 0 && (
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>My Listings</Text>
+                        <TouchableOpacity onPress={() => router.push('/(app)/my-listings')}>
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>See all</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {sortedListings.slice(0, 3).map((listing) => (
+                        <View key={listing.id} style={[styles.listingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={[styles.listingTitle, { color: colors.textPrimary }]}>{listing.title}</Text>
+                            <View style={styles.listingMeta}>
+                                <Ionicons name="eye" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                                <Text style={[styles.listingViews, { color: colors.textSecondary }]}>{listing.views || 0} views</Text>
+                                <Text style={[styles.listingPrice, { color: colors.primary }]}>MWK {listing.price.toLocaleString()}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            )}
         </ScrollView>
     );
   }
@@ -90,7 +105,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: 0 }]}>
       <FlatList
-        data={visibleListings}
+        data={limitedListings}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
             <>
@@ -264,15 +279,29 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  statsContainer: {
+    paddingHorizontal: spacing.xl,
+  },
   statsRow: {
     flexDirection: 'row',
     gap: spacing.md,
+    marginTop: -spacing.xl,
+    marginBottom: spacing.lg,
   },
   statItem: {
     flex: 1,
     padding: spacing.md,
     borderRadius: 16,
     borderWidth: 1,
+    alignItems: 'center',
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   statValue: {
     fontSize: 24,
@@ -281,6 +310,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
   },
   upgradeCard: {
     flexDirection: 'row',
@@ -357,5 +387,41 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 13,
+  },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing.lg,
+  },
+  manageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  listingItem: {
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+  },
+  listingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  listingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listingViews: {
+    fontSize: 13,
+    marginRight: 'auto',
+  },
+  listingPrice: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -88,12 +88,14 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.name, { color: colors.textPrimary }]}>{user.fullName}</Text>
             <Text style={[styles.email, { color: colors.textSecondary }]}>{user.email || 'No email set'}</Text>
-            <View style={[styles.badge, { backgroundColor: isPaid ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 152, 0, 0.1)', flexDirection: 'row', alignItems: 'center' }]}>
-                <Ionicons name={isPaid ? "diamond" : "star-outline"} size={12} color={isPaid ? "#4CAF50" : "#FF9800"} style={{ marginRight: 4 }} />
-                <Text style={[styles.badgeText, { color: isPaid ? '#4CAF50' : '#FF9800' }]}>
-                    {user.subscriptionStatus.toUpperCase()}
-                </Text>
-            </View>
+            {isTenant && (
+                <View style={[styles.badge, { backgroundColor: isPaid ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 152, 0, 0.1)', flexDirection: 'row', alignItems: 'center' }]}>
+                    <Ionicons name={isPaid ? "diamond" : "star-outline"} size={12} color={isPaid ? "#4CAF50" : "#FF9800"} style={{ marginRight: 4 }} />
+                    <Text style={[styles.badgeText, { color: isPaid ? '#4CAF50' : '#FF9800' }]}>
+                        {user.subscriptionStatus.toUpperCase()}
+                    </Text>
+                </View>
+            )}
         </View>
 
         <View style={styles.section}>
@@ -113,7 +115,40 @@ export default function ProfileScreen() {
                     <Text style={{ color: colors.textSecondary }}>Role</Text>
                     <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{user.role === 'landlord' ? 'Landlord' : 'Tenant'}</Text>
                 </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.row}>
+                    <Text style={{ color: colors.textSecondary }}>District</Text>
+                    <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{user.district || 'Not set'}</Text>
+                </View>
             </View>
+        </View>
+
+        <View style={styles.section}>
+            <Link href="/(app)/edit-profile" asChild>
+                <TouchableOpacity style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.settingsContent}>
+                        <Ionicons name="person-outline" size={32} color={colors.primary} />
+                        <View style={styles.settingsTextContainer}>
+                            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>Edit Profile</Text>
+                            <Text style={[styles.settingsSubtitle, { color: colors.textSecondary }]}>Update your information</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Link>
+        </View>
+
+        <View style={styles.section}>
+            <Link href="/(app)/settings" asChild>
+                <TouchableOpacity style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.settingsContent}>
+                        <Ionicons name="settings-outline" size={32} color={colors.primary} />
+                        <View style={styles.settingsTextContainer}>
+                            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>Settings</Text>
+                            <Text style={[styles.settingsSubtitle, { color: colors.textSecondary }]}>App preferences, notifications</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Link>
         </View>
 
         {isTenant && (
@@ -178,26 +213,13 @@ export default function ProfileScreen() {
             </View>
         )}
 
-        {user.role === 'landlord' && (
-            <View style={styles.section}>
-                <Link href="/(app)/my-listings" asChild>
-                    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="list-circle-outline" size={24} color={colors.primary} style={{ marginRight: 12 }} />
-                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Manage My Listings</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                </Link>
-            </View>
-        )}
-
-        <Button
-            title="Logout"
+        <TouchableOpacity
             onPress={handleLogout}
-            variant="outline"
-            style={{ marginTop: spacing.xl, marginBottom: 100 }}
-        />
+            style={[styles.logoutButton, { borderColor: '#F44336' }]}
+        >
+            <Ionicons name="log-out-outline" size={20} color="#F44336" style={{ marginRight: 8 }} />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
         </ScrollView>
 
         <Modal
@@ -216,18 +238,18 @@ export default function ProfileScreen() {
                         Are you sure you want to logout? You'll need to login again to access your account.
                     </Text>
                     <View style={styles.modalButtons}>
-                        <Button
-                            title="Cancel"
+                        <TouchableOpacity
                             onPress={cancelLogout}
-                            variant="ghost"
-                            style={styles.modalButton}
-                        />
-                        <Button
-                            title="Logout"
+                            style={[styles.modalButton, styles.cancelButton, { borderColor: colors.border }]}
+                        >
+                            <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                             onPress={confirmLogout}
-                            variant="outline"
-                            style={styles.modalButton}
-                        />
+                            style={[styles.modalButton, styles.confirmButton, { backgroundColor: '#F44336' }]}
+                        >
+                            <Text style={styles.modalButtonText}>Logout</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -368,5 +390,100 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1,
+  },
+  confirmButton: {
+    borderWidth: 0,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  settingsCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: spacing.md,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  settingsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  settingsTextContainer: {
+    flex: 1,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  settingsSubtitle: {
+    fontSize: 13,
+  },
+  actionRow: {
+    flexDirection: 'row',
+  },
+  actionCard: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing.xl,
+    marginBottom: 100,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F44336',
   },
 });

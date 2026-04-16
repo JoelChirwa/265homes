@@ -1,6 +1,6 @@
 // src/screens/Onboarding/LocationPermissionScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Button } from '@/src/components/Button';
@@ -48,18 +48,18 @@ export default function LocationPermissionScreen() {
       </View>
       
       <View style={styles.footer}>
-        <Button 
-          title="Allow Location Access" 
-          onPress={requestPermission} 
+        <Button
+          title="Allow Location Access"
+          onPress={requestPermission}
           loading={loading}
           style={{ width: '100%' }}
         />
-        <Button 
-          title="Maybe Later" 
-          onPress={() => router.replace('/onboarding/notifications')} 
-          style={{ width: '100%', backgroundColor: 'transparent', marginTop: spacing.sm }}
-          textStyle={{ color: colors.textSecondary }}
-        />
+        <TouchableOpacity
+          onPress={() => router.replace('/onboarding/notifications')}
+          style={[styles.maybeLaterButton, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.maybeLaterText, { color: colors.textSecondary }]}>Maybe Later</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -99,5 +99,19 @@ const styles = StyleSheet.create({
   footer: {
     width: '100%',
     paddingBottom: spacing.xl,
+  },
+  maybeLaterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+  },
+  maybeLaterText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

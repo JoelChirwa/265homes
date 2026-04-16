@@ -76,8 +76,16 @@ export default function AppLayout() {
       <Tabs.Screen
         name="settings"
         options={{
+          href: null,
           title: "Settings",
           tabBarIcon: ({ color }) => <FontAwesome name="cog" color={color} size={20} />,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-profile"
+        options={{
+          href: null,
+          title: "Edit Profile",
         }}
       />
       <Tabs.Screen
@@ -85,6 +93,20 @@ export default function AppLayout() {
         options={{
           href: null,
           title: "Subscription",
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          title: "Notifications",
+        }}
+      />
+      <Tabs.Screen
+        name="notification-detail"
+        options={{
+          href: null,
+          title: "Notification Details",
         }}
       />
     </Tabs>

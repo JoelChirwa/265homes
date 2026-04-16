@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/src/components/Button';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -66,18 +66,18 @@ export default function NotificationPermissionScreen() {
       </View>
       
       <View style={styles.footer}>
-        <Button 
-          title="Enable Notifications" 
-          onPress={requestPermission} 
+        <Button
+          title="Enable Notifications"
+          onPress={requestPermission}
           loading={loading}
           style={{ width: '100%', backgroundColor: colors.secondary }}
         />
-        <Button 
-          title="Skip for Now" 
-          onPress={finishOnboarding} 
-          style={{ width: '100%', backgroundColor: 'transparent', marginTop: spacing.sm }}
-          textStyle={{ color: colors.textSecondary }}
-        />
+        <TouchableOpacity
+          onPress={finishOnboarding}
+          style={[styles.skipButton, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>Skip for Now</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -117,5 +117,19 @@ const styles = StyleSheet.create({
   footer: {
     width: '100%',
     paddingBottom: spacing.xl,
+  },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -9,6 +9,7 @@ import { useAccessControl } from '@/src/hooks/useAccessControl';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { spacing } from '@/src/theme/spacing';
 import { Button } from '@/src/components/Button';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -40,7 +41,7 @@ export default function ListingDetailsScreen() {
   if (!canViewListingDetails) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+        <Ionicons name="lock-closed" size={40} color={colors.textSecondary} style={{ marginBottom: 12 }} />
         <Text style={[styles.centerTitle, { color: colors.textPrimary }]}>Access Locked</Text>
         <Text style={[styles.centerText, { color: colors.textSecondary }]}>{reason}</Text>
         <Button title="Upgrade to View Details" onPress={() => router.replace('/(app)/profile')} style={{ marginTop: spacing.lg }} />
@@ -69,11 +70,12 @@ export default function ListingDetailsScreen() {
             )}
           />
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={{ fontSize: 20 }}>⬅️</Text>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           {listing.isVerified && (
               <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedText}>✓ GPS Verified</Text>
+                  <Ionicons name="checkmark-circle" size={14} color="#fff" style={{ marginRight: 4 }} />
+                  <Text style={styles.verifiedText}>GPS Verified</Text>
               </View>
           )}
         </View>
@@ -82,7 +84,10 @@ export default function ListingDetailsScreen() {
           <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.title, { color: colors.textPrimary }]}>{listing.title}</Text>
-                <Text style={[styles.location, { color: colors.textSecondary }]}>📍 {listing.city}, {listing.area}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="location" size={16} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.location, { color: colors.textSecondary }]}>{listing.city}, {listing.area}</Text>
+                </View>
               </View>
               <Text style={[styles.price, { color: colors.primary }]}>MWK {listing.price.toLocaleString()}</Text>
           </View>
@@ -91,11 +96,11 @@ export default function ListingDetailsScreen() {
 
           <View style={styles.specsRow}>
               <View style={styles.specItem}>
-                <Text style={styles.specIcon}>🛏️</Text>
+                <Ionicons name="bed" size={20} color={colors.primary} style={{ marginRight: 8 }} />
                 <Text style={[styles.specText, { color: colors.textPrimary }]}>{listing.rooms} Rooms</Text>
               </View>
               <View style={styles.specItem}>
-                <Text style={styles.specIcon}>🚿</Text>
+                <Ionicons name="water" size={20} color={colors.primary} style={{ marginRight: 8 }} />
                 <Text style={[styles.specText, { color: colors.textPrimary }]}>Verified Bath</Text>
               </View>
           </View>

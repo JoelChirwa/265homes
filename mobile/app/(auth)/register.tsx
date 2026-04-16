@@ -1,6 +1,6 @@
 // app/(auth)/register.tsx
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -47,119 +47,124 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView 
-        contentContainerStyle={{ flexGrow: 1 }} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ backgroundColor: colors.background, flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
         style={{ backgroundColor: colors.background }}
         keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Join Malawi's most trusted property platform.
-            </Text>
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  Join Malawi's most trusted property platform.
+              </Text>
+          </View>
+
+          <Formik
+              initialValues={{
+                  fullName: '',
+                  phone: '',
+                  email: '',
+                  password: '',
+                  role: 'tenant',
+              }}
+              validationSchema={RegisterSchema}
+              onSubmit={handleRegister}
+          >
+              {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
+                  <View style={styles.form}>
+                      <Input
+                          label="Full Name"
+                          placeholder="John Phiri"
+                          value={values.fullName}
+                          onChangeText={handleChange('fullName')}
+                          onBlur={handleBlur('fullName')}
+                          error={touched.fullName && errors.fullName ? errors.fullName : undefined}
+                      />
+                      <Input
+                          label="Phone Number"
+                          placeholder="0999 123 456"
+                          value={values.phone}
+                          onChangeText={handleChange('phone')}
+                          onBlur={handleBlur('phone')}
+                          error={touched.phone && errors.phone ? errors.phone : undefined}
+                          keyboardType="phone-pad"
+                      />
+                      <Input
+                          label="Email (Optional)"
+                          placeholder="john@example.com"
+                          value={values.email}
+                          onChangeText={handleChange('email')}
+                          onBlur={handleBlur('email')}
+                          error={touched.email && errors.email ? errors.email : undefined}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                      />
+                      <Input
+                          label="Password"
+                          placeholder="********"
+                          value={values.password}
+                          onChangeText={handleChange('password')}
+                          onBlur={handleBlur('password')}
+                          error={touched.password && errors.password ? errors.password : undefined}
+                          secureTextEntry
+                      />
+
+                      <View style={styles.roleContainer}>
+                          <Text style={[styles.roleLabel, { color: colors.textSecondary }]}>I am a:</Text>
+                          <View style={styles.roleButtons}>
+                              <TouchableOpacity
+                                  onPress={() => setFieldValue('role', 'tenant')}
+                                  style={[
+                                      styles.roleButton,
+                                      {
+                                          backgroundColor: values.role === 'tenant' ? colors.primary : colors.surface,
+                                          borderColor: colors.border
+                                      }
+                                  ]}
+                              >
+                                  <Text style={[styles.roleText, { color: values.role === 'tenant' ? '#fff' : colors.textPrimary }]}>Tenant</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                  onPress={() => setFieldValue('role', 'landlord')}
+                                  style={[
+                                      styles.roleButton,
+                                      {
+                                          backgroundColor: values.role === 'landlord' ? colors.primary : colors.surface,
+                                          borderColor: colors.border
+                                      }
+                                  ]}
+                              >
+                                  <Text style={[styles.roleText, { color: values.role === 'landlord' ? '#fff' : colors.textPrimary }]}>Landlord</Text>
+                              </TouchableOpacity>
+                          </View>
+                      </View>
+
+                      <Button
+                          title="Create Account"
+                          onPress={() => handleSubmit()}
+                          loading={isSubmitting}
+                          style={{ width: '100%', marginTop: spacing.md }}
+                      />
+                  </View>
+              )}
+          </Formik>
+
+          <View style={styles.footer}>
+              <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
+              <Link href="/(auth)/login" asChild>
+                  <TouchableOpacity>
+                      <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text>
+                  </TouchableOpacity>
+              </Link>
+          </View>
         </View>
-
-        <Formik
-            initialValues={{
-                fullName: '',
-                phone: '',
-                email: '',
-                password: '',
-                role: 'tenant',
-            }}
-            validationSchema={RegisterSchema}
-            onSubmit={handleRegister}
-        >
-            {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
-                <View style={styles.form}>
-                    <Input 
-                        label="Full Name"
-                        placeholder="John Phiri"
-                        value={values.fullName}
-                        onChangeText={handleChange('fullName')}
-                        onBlur={handleBlur('fullName')}
-                        error={touched.fullName && errors.fullName ? errors.fullName : undefined}
-                    />
-                    <Input 
-                        label="Phone Number"
-                        placeholder="0999 123 456"
-                        value={values.phone}
-                        onChangeText={handleChange('phone')}
-                        onBlur={handleBlur('phone')}
-                        error={touched.phone && errors.phone ? errors.phone : undefined}
-                        keyboardType="phone-pad"
-                    />
-                    <Input 
-                        label="Email (Optional)"
-                        placeholder="john@example.com"
-                        value={values.email}
-                        onChangeText={handleChange('email')}
-                        onBlur={handleBlur('email')}
-                        error={touched.email && errors.email ? errors.email : undefined}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                    <Input 
-                        label="Password"
-                        placeholder="********"
-                        value={values.password}
-                        onChangeText={handleChange('password')}
-                        onBlur={handleBlur('password')}
-                        error={touched.password && errors.password ? errors.password : undefined}
-                        secureTextEntry
-                    />
-
-                    <View style={styles.roleContainer}>
-                        <Text style={[styles.roleLabel, { color: colors.textSecondary }]}>I am a:</Text>
-                        <View style={styles.roleButtons}>
-                            <TouchableOpacity 
-                                onPress={() => setFieldValue('role', 'tenant')}
-                                style={[
-                                    styles.roleButton, 
-                                    { 
-                                        backgroundColor: values.role === 'tenant' ? colors.primary : colors.surface,
-                                        borderColor: colors.border
-                                    }
-                                ]}
-                            >
-                                <Text style={[styles.roleText, { color: values.role === 'tenant' ? '#fff' : colors.textPrimary }]}>Tenant</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                onPress={() => setFieldValue('role', 'landlord')}
-                                style={[
-                                    styles.roleButton, 
-                                    { 
-                                        backgroundColor: values.role === 'landlord' ? colors.primary : colors.surface,
-                                        borderColor: colors.border
-                                    }
-                                ]}
-                            >
-                                <Text style={[styles.roleText, { color: values.role === 'landlord' ? '#fff' : colors.textPrimary }]}>Landlord</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <Button 
-                        title="Create Account" 
-                        onPress={() => handleSubmit()} 
-                        loading={isSubmitting}
-                        style={{ width: '100%', marginTop: spacing.md }}
-                    />
-                </View>
-            )}
-        </Formik>
-
-        <View style={styles.footer}>
-            <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
-            <Link href="/(auth)/login" asChild>
-                <TouchableOpacity>
-                    <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text>
-                </TouchableOpacity>
-            </Link>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

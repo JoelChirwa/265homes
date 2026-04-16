@@ -1,6 +1,6 @@
 // app/(app)/post-listing.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, FlatList, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, FlatList, Linking, KeyboardAvoidingView, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
@@ -122,33 +122,38 @@ export default function PostListingScreen() {
   };
 
   return (
-    <Formik
-        initialValues={{
-            title: '',
-            description: '',
-            city: '',
-            area: '',
-            price: '',
-            rooms: '',
-            amenitiesRaw: '',
-            images: [] as string[],
-            gps: null as GPSCapture | null,
-        }}
-        validationSchema={ListingSchema}
-        onSubmit={handlePost}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ backgroundColor: colors.background, flex: 1 }}
     >
-        {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
-            <ScrollView 
-                style={{ backgroundColor: colors.background }} 
-                contentContainerStyle={styles.container}
-                keyboardShouldPersistTaps="handled"
-            >
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Post a Listing</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Complete the form to reach thousands of renters.</Text>
-                </View>
+      <Formik
+          initialValues={{
+              title: '',
+              description: '',
+              city: '',
+              area: '',
+              price: '',
+              rooms: '',
+              amenitiesRaw: '',
+              images: [] as string[],
+              gps: null as GPSCapture | null,
+          }}
+          validationSchema={ListingSchema}
+          onSubmit={handlePost}
+      >
+          {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
+              <ScrollView
+                  style={{ backgroundColor: colors.background }}
+                  contentContainerStyle={styles.container}
+                  keyboardShouldPersistTaps="handled"
+              >
+                  <>
+                      <View style={styles.header}>
+                          <Text style={[styles.title, { color: colors.textPrimary }]}>Post a Listing</Text>
+                          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Complete the form to reach thousands of renters.</Text>
+                      </View>
 
-                <View style={styles.section}>
+                      <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Property Images</Text>
                     <View style={styles.imagePickerRow}>
                     <TouchableOpacity 
@@ -224,9 +229,11 @@ export default function PostListingScreen() {
                 </View>
 
                 <Button title="Post Listing" onPress={() => handleSubmit()} loading={isSubmitting} style={{ marginVertical: spacing.xl }} />
-            </ScrollView>
-        )}
-    </Formik>
+                  </>
+              </ScrollView>
+          )}
+      </Formik>
+    </KeyboardAvoidingView>
   );
 }
 
