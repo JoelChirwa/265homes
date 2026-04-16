@@ -1,4 +1,4 @@
-import { usersById, nowIso, normalizePhone } from "../models/state.js";
+import { usersById, nowIso, normalizePhone, getSubscriptionRecord } from "../models/state.js";
 
 export function registerUser(req, res) {
   const { fullName, phone, role, email, city } = req.body ?? {};
@@ -27,6 +27,11 @@ export function registerUser(req, res) {
     status: "active",
     createdAt: nowIso(),
     subscriptionStatus: role === "tenant" ? "unpaid" : "paid",
+    subscriptionPackage: null,
+    subscriptionStartAt: null,
+    trialEndsAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    listingViewsUsed: 0,
+    listingViewsLimit: role === "tenant" ? 10 : 1000,
   };
 
   usersById.set(id, newUser);
@@ -39,29 +44,47 @@ export function registerUser(req, res) {
 }
 
 export function loginUser(req, res) {
-  const { phone } = req.body ?? {};
-  
-  if (!phone) {
-    return res.status(400).json({ message: "Phone number is required." });
-  }
+  try {
+    console.log('Login request body:', req.body);
+    const { phone } = req.body ?? {};
 
-  const normalizedPhone = normalizePhone(phone);
-  let foundUser = null;
-
-  for (const user of usersById.values()) {
-    if (normalizePhone(user.phone) === normalizedPhone) {
-      foundUser = user;
-      break;
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required." });
     }
-  }
 
-  if (!foundUser) {
-    return res.status(404).json({ message: "Account not found. Please register first." });
-  }
+    const normalizedPhone = normalizePhone(phone);
+    let foundUser = null;
 
-  return res.json({
-    message: "Login successful",
-    token: `tok-${foundUser.id}-${Date.now()}`,
-    user: foundUser
-  });
+    for (const user of usersById.values()) {
+      if (normalizePhone(user.phone) === normalizedPhone) {
+        foundUser = user;
+        break;
+      }
+    }
+
+    if (!foundUser) {
+      return res.status(404).json({ message: "Account not found. Please register first." });
+    }
+
+    // Get subscription info and merge with user
+    const subscription = getSubscriptionRecord(foundUser.id);
+    const userWithSubscription = {
+      ...foundUser,
+      subscriptionStatus: subscription.status,
+      subscriptionPackage: subscription.subscriptionPackage,
+      subscriptionStartAt: subscription.subscriptionStartAt,
+      trialEndsAt: foundUser.trialEndsAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      listingViewsUsed: foundUser.listingViewsUsed || 0,
+      listingViewsLimit: foundUser.listingViewsLimit || (foundUser.role === "tenant" ? 10 : 1000),
+    };
+
+    return res.json({
+      message: "Login successful",
+      token: `tok-${foundUser.id}-${Date.now()}`,
+      user: userWithSubscription
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ message: "Login failed", error: error instanceof Error ? error.message : String(error) });
+  }
 }

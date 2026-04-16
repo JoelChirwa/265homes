@@ -66,9 +66,9 @@ export const usersById = new Map([
 ]);
 
 export const subscriptionsByUserId = new Map([
-  ["usr-tenant-1", { status: "paid", paidAt: "2026-04-01T09:00:00.000Z" }],
-  ["usr-tenant-2", { status: "unpaid", paidAt: null }],
-  ["usr-tenant-3", { status: "unpaid", paidAt: null }],
+  ["usr-tenant-1", { status: "paid", paidAt: new Date().toISOString(), subscriptionPackage: "weekly", subscriptionStartAt: new Date().toISOString() }],
+  ["usr-tenant-2", { status: "unpaid", paidAt: null, subscriptionPackage: null, subscriptionStartAt: null }],
+  ["usr-tenant-3", { status: "unpaid", paidAt: null, subscriptionPackage: null, subscriptionStartAt: null }],
 ]);
 
 export const userIdByReference = new Map();
@@ -196,7 +196,7 @@ export function isFreeBrowsingActive() {
 }
 
 export function getSubscriptionRecord(userId) {
-  return subscriptionsByUserId.get(userId) ?? { status: "unpaid", paidAt: null };
+  return subscriptionsByUserId.get(userId) ?? { status: "unpaid", paidAt: null, subscriptionPackage: null, subscriptionStartAt: null };
 }
 
 export function pushAudit(action, payload) {
@@ -228,9 +228,12 @@ export function sendNotification({ userId, title, message, type = "system" }) {
 }
 
 export function updateUserSubscription(userId, metadata = {}) {
+  const current = subscriptionsByUserId.get(userId) ?? {};
   subscriptionsByUserId.set(userId, {
     status: "paid",
     paidAt: nowIso(),
+    subscriptionPackage: metadata.plan || current.subscriptionPackage || "monthly",
+    subscriptionStartAt: metadata.plan ? nowIso() : current.subscriptionStartAt || nowIso(),
     provider: "paychangu",
     metadata,
   });

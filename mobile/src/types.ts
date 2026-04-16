@@ -2,6 +2,8 @@ export type UserRole = "tenant" | "landlord";
 
 export type SubscriptionStatus = "trial" | "limited" | "paid" | "unpaid";
 
+export type SubscriptionPackage = 'weekly' | 'monthly' | null;
+
 export type User = {
   id: string;
   fullName: string;
@@ -9,6 +11,8 @@ export type User = {
   phone: string;
   role: UserRole;
   subscriptionStatus: SubscriptionStatus;
+  subscriptionPackage?: SubscriptionPackage;
+  subscriptionStartAt?: string;
   trialEndsAt: string;
   listingViewsUsed: number;
   listingViewsLimit: number;
@@ -55,6 +59,7 @@ export type Listing = {
 
 export type ListingFilters = {
   city?: string;
+  area?: string;
   minPrice?: number;
   maxPrice?: number;
   minRooms?: number;

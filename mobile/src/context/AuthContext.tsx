@@ -99,7 +99,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async (payload: RegisterPayload) => {
       const response = await apiRequest<{ token: string; user: User }>("/auth/register", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       });
 
       await persistSession(response.token, response.user);
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async (payload: LoginPayload) => {
       const response = await apiRequest<{ token: string; user: User }>("/auth/login", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       });
 
       await persistSession(response.token, response.user);
@@ -176,14 +176,32 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const response = await apiRequest<{
       subscriptionStatus: "paid" | "unpaid" | "pending";
+      subscriptionPackage?: string;
+      subscriptionStartAt?: string;
     }>(`/subscriptions/${user.id}/status`);
 
-    if (response.subscriptionStatus !== "paid") {
-      return;
-    }
+    if (response.subscriptionStatus === "paid") {
+      let nextUserJson: string | null = null;
+      setUser((current) => {
+        if (!current) {
+          return current;
+        }
 
-    await setSubscriptionPaid();
-  }, [setSubscriptionPaid, user]);
+        const updated: User = {
+          ...current,
+          subscriptionStatus: response.subscriptionStatus,
+          subscriptionPackage: response.subscriptionPackage as any,
+          subscriptionStartAt: response.subscriptionStartAt,
+        };
+        nextUserJson = JSON.stringify(updated);
+        return updated;
+      });
+
+      if (nextUserJson) {
+        await sessionStorage.saveUser(nextUserJson);
+      }
+    }
+  }, [user]);
 
   const value = useMemo(
     () => ({

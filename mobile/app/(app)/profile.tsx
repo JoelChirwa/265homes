@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -12,6 +12,7 @@ export default function ProfileScreen() {
   const { user, logout, refreshSubscriptionStatus } = useAuth();
   const { colors } = useTheme();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   if (!user) return null;
 
@@ -25,6 +26,53 @@ export default function ProfileScreen() {
     } finally {
         setIsRefreshing(false);
     }
+  };
+
+  const getDaysRemaining = () => {
+    if (!user.subscriptionStartAt || !user.subscriptionPackage) return 0;
+
+    try {
+      const startDate = new Date(user.subscriptionStartAt);
+      const now = new Date();
+      const daysPerPackage = user.subscriptionPackage === 'weekly' ? 7 : 30;
+      const endDate = new Date(startDate.getTime() + daysPerPackage * 24 * 60 * 60 * 1000);
+      const diffTime = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.max(0, diffDays);
+    } catch (e) {
+      console.error('Error calculating days remaining:', e);
+      return 0;
+    }
+  };
+
+  const getDaysRemainingPercentage = () => {
+    if (!user.subscriptionStartAt || !user.subscriptionPackage) return 0;
+
+    try {
+      const startDate = new Date(user.subscriptionStartAt);
+      const now = new Date();
+      const daysPerPackage = user.subscriptionPackage === 'weekly' ? 7 : 30;
+      const endDate = new Date(startDate.getTime() + daysPerPackage * 24 * 60 * 60 * 1000);
+      const totalDuration = endDate.getTime() - startDate.getTime();
+      const elapsed = now.getTime() - startDate.getTime();
+      const percentage = Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
+      return percentage;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   return (
@@ -72,25 +120,55 @@ export default function ProfileScreen() {
             <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Usage Stats</Text>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={styles.usageHeader}>
-                    <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Listing Views</Text>
-                    <Text style={{ color: colors.textPrimary }}>{user.listingViewsUsed} / {user.listingViewsLimit}</Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-                    <View 
-                        style={[
-                            styles.progressBarFill, 
-                            { 
-                                backgroundColor: colors.primary, 
-                                width: `${Math.min((user.listingViewsUsed / user.listingViewsLimit) * 100, 100)}%` 
-                            }
-                        ]} 
-                    />
-                </View>
-                {Platform.OS !== "web" && (
+                {isPaid ? (
+                    <>
+                        <View style={styles.usageHeader}>
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                                {user.subscriptionPackage === 'weekly' ? 'Weekly Access' : user.subscriptionPackage === 'monthly' ? 'Monthly Access' : 'Premium Access'}
+                            </Text>
+                            <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                                {getDaysRemaining()} days left
+                            </Text>
+                        </View>
+                        <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                            <View
+                                style={[
+                                    styles.progressBarFill,
+                                    {
+                                        backgroundColor: colors.primary,
+                                        width: `${getDaysRemainingPercentage()}%`
+                                    }
+                                ]}
+                            />
+                        </View>
+                    </>
+                ) : (
+                    <>
+                        <View style={styles.usageHeader}>
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Free Listing Views</Text>
+                            <Text style={{ color: colors.textPrimary }}>{user.listingViewsUsed} / 10</Text>
+                        </View>
+                        <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                            <View
+                                style={[
+                                    styles.progressBarFill,
+                                    {
+                                        backgroundColor: colors.primary,
+                                        width: `${Math.min((user.listingViewsUsed / 10) * 100, 100)}%`
+                                    }
+                                ]}
+                            />
+                        </View>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: spacing.sm }}>
+                            Subscribe to unlock unlimited access
+                        </Text>
+                    </>
+                )}
+                {Platform.OS !== "web" && !isPaid && (
                     <Link href="/(app)/subscription" asChild>
-                        <Button 
-                            title="Manage Subscription" 
+                        <Button
+                            title="Manage Subscription"
+                            onPress={() => {}}
                             variant="primary"
                             style={{ marginTop: spacing.md }}
                         />
@@ -114,13 +192,46 @@ export default function ProfileScreen() {
             </View>
         )}
 
-        <Button 
-            title="Logout" 
-            onPress={logout} 
-            variant="danger"
+        <Button
+            title="Logout"
+            onPress={handleLogout}
+            variant="outline"
             style={{ marginTop: spacing.xl, marginBottom: 100 }}
         />
         </ScrollView>
+
+        <Modal
+            visible={showLogoutModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={cancelLogout}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                    <View style={styles.modalIcon}>
+                        <Ionicons name="log-out-outline" size={40} color="#F44336" />
+                    </View>
+                    <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Logout</Text>
+                    <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+                        Are you sure you want to logout? You'll need to login again to access your account.
+                    </Text>
+                    <View style={styles.modalButtons}>
+                        <Button
+                            title="Cancel"
+                            onPress={cancelLogout}
+                            variant="ghost"
+                            style={styles.modalButton}
+                        />
+                        <Button
+                            title="Logout"
+                            onPress={confirmLogout}
+                            variant="outline"
+                            style={styles.modalButton}
+                        />
+                    </View>
+                </View>
+            </View>
+        </Modal>
     </View>
   );
 }
@@ -210,5 +321,52 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  modalMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: spacing.md,
+  },
+  modalButton: {
+    flex: 1,
   },
 });

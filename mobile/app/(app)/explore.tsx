@@ -1,6 +1,6 @@
 // app/(app)/explore.tsx
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Animated } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { useAuth } from '@/src/context/AuthContext';
 import { useListings } from '@/src/context/ListingsContext';
@@ -13,15 +13,37 @@ import { Input } from '@/src/components/Input';
 import { Link, useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
-const CITIES = ['Lilongwe', 'Blantyre', 'Mzuzu'];
-
-const CITY_COORDS = {
-    Lilongwe: { latitude: -13.9626, longitude: 33.7741 },
-    Blantyre: { latitude: -15.7861, longitude: 35.0058 },
-    Mzuzu: { latitude: -11.4584, longitude: 34.0150 }
-};
 
 import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
+
+function BlinkingDot() {
+  const opacity = new Animated.Value(1);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 0.2,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View style={[styles.blinkingDot, { opacity }]}>
+      <Ionicons name="water" size={10} color="#1D4ED8" />
+    </Animated.View>
+  );
+}
 
 export default function ExploreScreen() {
   const { user } = useAuth();
@@ -32,18 +54,19 @@ export default function ExploreScreen() {
 
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  const [city, setCity] = useState<string | undefined>(undefined);
+  const [area, setArea] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [minRooms, setMinRooms] = useState('');
+  const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
 
   const initialRegion = useMemo(() => {
-      const coords = city ? CITY_COORDS[city as keyof typeof CITY_COORDS] : CITY_COORDS.Lilongwe;
       return {
-          ...coords,
+          latitude: -13.9626,
+          longitude: 33.7741,
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
       };
-  }, [city]);
+  }, []);
 
   if (!user) return null;
 
@@ -82,14 +105,14 @@ export default function ExploreScreen() {
 
   const apply = () => {
     setFilters({
-      city,
+      area: area || undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       minRooms: minRooms ? Number(minRooms) : undefined,
     });
   };
 
   const reset = () => {
-      setCity(undefined);
+      setArea('');
       setMaxPrice('');
       setMinRooms('');
       setFilters({});
@@ -119,43 +142,42 @@ export default function ExploreScreen() {
       </View>
 
       <View style={[styles.filterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Select City</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cityScroll}>
-          {CITIES.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => setCity(prev => (prev === item ? undefined : item))}
-              style={[
-                styles.cityPill,
-                { 
-                    backgroundColor: city === item ? colors.primary : 'transparent',
-                    borderColor: city === item ? colors.primary : colors.border
-                }
-              ]}
-            >
-              <Text style={[styles.cityText, { color: city === item ? '#fff' : colors.textPrimary }]}>
-                {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <TouchableOpacity onPress={() => setIsFilterCollapsed(!isFilterCollapsed)} style={styles.filterHeader}>
+          <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>Filters</Text>
+          <Ionicons 
+            name={isFilterCollapsed ? "chevron-down" : "chevron-up"} 
+            size={20} 
+            color={colors.textSecondary} 
+          />
+        </TouchableOpacity>
 
-        <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-                <Input placeholder="Max Price (MWK)" value={maxPrice} onChangeText={setMaxPrice} keyboardType="numeric" style={styles.compactInput} />
-            </View>
-            <View style={{ width: spacing.sm }} />
-            <View style={{ width: 100 }}>
-                <Input placeholder="Min Rooms" value={minRooms} onChangeText={setMinRooms} keyboardType="numeric" style={styles.compactInput} />
-            </View>
-        </View>
+        {!isFilterCollapsed && (
+          <>
+            <Input
+              placeholder="Search by area"
+              value={area}
+              onChangeText={setArea}
+              style={styles.areaInput}
+            />
 
-        <View style={styles.filterActions}>
-            <TouchableOpacity onPress={reset} style={styles.resetButton}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Reset</Text>
-            </TouchableOpacity>
-            <Button title="Apply Filters" onPress={apply} style={styles.applyButton} />
-        </View>
+            <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                    <Input placeholder="Max Price (MWK)" value={maxPrice} onChangeText={setMaxPrice} keyboardType="numeric" style={styles.compactInput} />
+                </View>
+                <View style={{ width: spacing.sm }} />
+                <View style={{ width: 100 }}>
+                    <Input placeholder="Min Rooms" value={minRooms} onChangeText={setMinRooms} keyboardType="numeric" style={styles.compactInput} />
+                </View>
+            </View>
+
+            <View style={styles.filterActions}>
+                <TouchableOpacity onPress={reset} style={styles.resetButton}>
+                    <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Reset</Text>
+                </TouchableOpacity>
+                <Button title="Apply Filters" onPress={apply} style={styles.applyButton} />
+            </View>
+          </>
+        )}
       </View>
 
       {isLoading ? (
@@ -173,15 +195,23 @@ export default function ExploreScreen() {
                         key={listing.id}
                         coordinate={{ latitude: listing.gps.latitude, longitude: listing.gps.longitude }}
                       >
-                          <View style={[styles.customMarker, { backgroundColor: colors.primary, borderColor: '#fff' }]}>
-                              <Text style={styles.markerPrice}>
+                          <View style={styles.markerContainer}>
+                              <Text style={styles.markerText}>
                                   {listing.price >= 1000000 ? `${(listing.price / 1000000).toFixed(1)}M` : `${Math.round(listing.price / 1000)}k`}
                               </Text>
-                              <View style={[styles.markerArrow, { borderTopColor: colors.primary }]} />
+                              <BlinkingDot />
                           </View>
                           <Callout onPress={() => router.push(`/listing/${listing.id}`)}>
                               <View style={styles.callout}>
                                   <Text style={styles.calloutTitle}>{listing.title}</Text>
+                                  <View style={styles.calloutRow}>
+                                      <Ionicons name="location" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                                      <Text style={styles.calloutDetail}>{listing.area || listing.city}</Text>
+                                  </View>
+                                  <View style={styles.calloutRow}>
+                                      <Ionicons name="bed" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                                      <Text style={styles.calloutDetail}>{listing.rooms} {listing.rooms === 1 ? 'Room' : 'Rooms'}</Text>
+                                  </View>
                                   <Text style={styles.calloutPrice}>MWK {listing.price.toLocaleString()}</Text>
                                   <Text style={styles.calloutLink}>Tap to view details</Text>
                               </View>
@@ -282,6 +312,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.lg,
   },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
   sectionTitle: {
     fontSize: 10,
     fontWeight: '700',
@@ -289,20 +329,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: spacing.sm,
   },
-  cityScroll: {
-    flexDirection: 'row',
+  areaInput: {
     marginBottom: spacing.md,
-  },
-  cityPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  cityText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
@@ -332,31 +360,23 @@ const styles = StyleSheet.create({
     width: width,
     height: '100%',
   },
-  customMarker: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 2,
+  markerContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  markerPrice: {
-    color: '#fff',
-    fontSize: 11,
+  markerText: {
+    color: '#1D4ED8',
+    fontSize: 14,
     fontWeight: '800',
+    textShadowColor: '#fff',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
   },
-  markerArrow: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    position: 'absolute',
-    bottom: -8,
+  blinkingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1D4ED8',
+    marginTop: 2,
   },
   callout: {
     padding: 10,
@@ -372,6 +392,15 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontWeight: '700',
     marginBottom: 4,
+  },
+  calloutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  calloutDetail: {
+    fontSize: 12,
+    color: '#666',
   },
   calloutLink: {
     fontSize: 11,

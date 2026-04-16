@@ -240,7 +240,7 @@ export async function verifyPayment(req, res) {
     if (hasPaidStatus(status)) {
       const userId = tx?.userId || userIdByReference.get(reference);
       if (userId) {
-        updateUserSubscription(userId, { reference, provider: "paychangu" });
+        updateUserSubscription(userId, { reference, provider: "paychangu", plan: tx?.plan });
       }
     }
 
@@ -309,7 +309,8 @@ export function handlePaychanguWebhook(req, res) {
     (reference ? userIdByReference.get(reference) : undefined);
 
   if (userId && hasPaidStatus(status)) {
-    updateUserSubscription(userId, { reference, webhook: payload });
+    const tx = reference ? transactionsByReference.get(reference) : null;
+    updateUserSubscription(userId, { reference, webhook: payload, plan: tx?.plan });
     sendNotification({
       userId,
       title: "Subscription Activated",

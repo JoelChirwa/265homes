@@ -79,10 +79,10 @@ export default function MyListingsScreen() {
                     style={styles.actionButton}
                 />
                 <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-                <Button 
-                    title="Delete" 
+                <Button
+                    title="Delete"
                     onPress={() => handleDelete(item.id)}
-                    variant="danger"
+                    variant="outline"
                     style={styles.actionButton}
                 />
             </View>

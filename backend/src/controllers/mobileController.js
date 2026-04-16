@@ -17,6 +17,8 @@ export function getSubscriptionStatus(req, res) {
   return res.json({
     userId: req.params.userId,
     subscriptionStatus,
+    subscriptionPackage: subscriptionRecord.subscriptionPackage,
+    subscriptionStartAt: subscriptionRecord.subscriptionStartAt,
     accessGranted,
     freeBrowsingDayActive,
     metadata: subscriptionRecord,
