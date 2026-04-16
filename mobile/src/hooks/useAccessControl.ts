@@ -19,9 +19,18 @@ export function useAccessControl(user: User | null) {
       return { canViewListingDetails: true, reason: "" };
     }
 
+    // Check if user is within 24-hour trial period
+    if (user.trialEndsAt) {
+      const now = new Date();
+      const trialEnd = new Date(user.trialEndsAt);
+      if (now < trialEnd) {
+        return { canViewListingDetails: true, reason: "" };
+      }
+    }
+
     return {
       canViewListingDetails: false,
-      reason: "Tenant subscription required to view listings.",
+      reason: "Your 24-hour free trial has ended. Subscribe to continue viewing listings.",
     };
   }, [user]);
 }

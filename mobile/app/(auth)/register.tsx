@@ -1,5 +1,5 @@
 // app/(auth)/register.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Formik } from 'formik';
@@ -10,6 +10,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { spacing } from '@/src/theme/spacing';
 import { useAuth } from '@/src/context/AuthContext';
 import { UserRole } from '@/src/types';
+import { Ionicons } from '@expo/vector-icons';
 
 const RegisterSchema = Yup.object().shape({
   fullName: Yup.string()
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { register } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   
   const handleRegister = async (values: any, { setSubmitting }: any) => {
     try {
@@ -104,15 +106,28 @@ export default function RegisterScreen() {
                           keyboardType="email-address"
                           autoCapitalize="none"
                       />
-                      <Input
-                          label="Password"
-                          placeholder="********"
-                          value={values.password}
-                          onChangeText={handleChange('password')}
-                          onBlur={handleBlur('password')}
-                          error={touched.password && errors.password ? errors.password : undefined}
-                          secureTextEntry
-                      />
+                      <View style={styles.passwordContainer}>
+                          <Input
+                              label="Password"
+                              placeholder="********"
+                              value={values.password}
+                              onChangeText={handleChange('password')}
+                              onBlur={handleBlur('password')}
+                              error={touched.password && errors.password ? errors.password : undefined}
+                              secureTextEntry={!showPassword}
+                              style={{ flex: 1 }}
+                          />
+                          <TouchableOpacity
+                              onPress={() => setShowPassword(!showPassword)}
+                              style={styles.passwordToggle}
+                          >
+                              <Ionicons 
+                                  name={showPassword ? "eye-off" : "eye"} 
+                                  size={24} 
+                                  color={colors.textSecondary} 
+                              />
+                          </TouchableOpacity>
+                      </View>
 
                       <View style={styles.roleContainer}>
                           <Text style={[styles.roleLabel, { color: colors.textSecondary }]}>I am a:</Text>
@@ -188,6 +203,17 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 0,
+    top: 28,
+    padding: spacing.sm,
   },
   roleContainer: {
     marginBottom: spacing.lg,

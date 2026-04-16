@@ -180,19 +180,7 @@ export default function ProfileScreen() {
                 ) : (
                     <>
                         <View style={styles.usageHeader}>
-                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Free Listing Views</Text>
-                            <Text style={{ color: colors.textPrimary }}>{user.listingViewsUsed} / 10</Text>
-                        </View>
-                        <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-                            <View
-                                style={[
-                                    styles.progressBarFill,
-                                    {
-                                        backgroundColor: colors.primary,
-                                        width: `${Math.min((user.listingViewsUsed / 10) * 100, 100)}%`
-                                    }
-                                ]}
-                            />
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>24-Hour Free Trial</Text>
                         </View>
                         <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: spacing.sm }}>
                             Subscribe to unlock unlimited access

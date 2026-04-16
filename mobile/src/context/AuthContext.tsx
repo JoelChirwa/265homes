@@ -21,7 +21,6 @@ type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
-  incrementListingView: () => Promise<void>;
   refreshSubscriptionStatus: () => Promise<void>;
   setSubscriptionPaid: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -129,27 +128,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     router.replace("/(auth)/login");
   }, []);
 
-  const incrementListingView = useCallback(async () => {
-    let nextUserJson: string | null = null;
-
-    setUser((current) => {
-      if (!current) {
-        return current;
-      }
-
-      const updated: User = {
-        ...current,
-        listingViewsUsed: current.listingViewsUsed + 1,
-      };
-      nextUserJson = JSON.stringify(updated);
-      return updated;
-    });
-
-    if (nextUserJson) {
-      await sessionStorage.saveUser(nextUserJson);
-    }
-  }, []);
-
   const setSubscriptionPaid = useCallback(async () => {
     let nextUserJson: string | null = null;
     setUser((current) => {
@@ -237,7 +215,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       register,
       logout,
-      incrementListingView,
       refreshSubscriptionStatus,
       setSubscriptionPaid,
       completeOnboarding,
@@ -245,7 +222,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }),
     [
       completeOnboarding,
-      incrementListingView,
       isBootstrapping,
       isOnboardingCompleted,
       login,
