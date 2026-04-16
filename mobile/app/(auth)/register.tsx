@@ -1,144 +1,216 @@
-import { Link } from "expo-router";
-import { useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+// app/(auth)/register.tsx
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useRouter, Link } from 'expo-router';
+import { Formik } from 'formik';
+import * as Yup from 'yup';
+import { Button } from '@/src/components/Button';
+import { Input } from '@/src/components/Input';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { spacing } from '@/src/theme/spacing';
+import { useAuth } from '@/src/context/AuthContext';
+import { UserRole } from '@/src/types';
 
-import { useAuth } from "@/src/context/AuthContext";
-import type { UserRole } from "@/src/types";
+const RegisterSchema = Yup.object().shape({
+  fullName: Yup.string()
+    .min(3, 'Name too short')
+    .required('Full name is required'),
+  phone: Yup.string()
+    .matches(/^[0-9+]{10,15}$/, 'Invalid phone number format')
+    .required('Phone number is required'),
+  email: Yup.string().email('Invalid email format'),
+  password: Yup.string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
+  role: Yup.string().oneOf(['tenant', 'landlord']).required(),
+});
 
 export default function RegisterScreen() {
+  const router = useRouter();
+  const { colors } = useTheme();
   const { register } = useAuth();
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("tenant");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleRegister = async () => {
-    if (!fullName || !phone || !password) {
-      Alert.alert("Missing details", "Please complete full name, phone and password.");
-      return;
-    }
-
+  
+  const handleRegister = async (values: any, { setSubmitting }: any) => {
     try {
-      setIsLoading(true);
       await register({
-        fullName,
-        email: email.trim() || undefined,
-        phone,
-        password,
-        role,
+        fullName: values.fullName,
+        email: values.email.trim() || undefined,
+        phone: values.phone,
+        password: values.password,
+        role: values.role as UserRole,
       });
     } catch (error) {
-      Alert.alert("Registration failed", (error as Error).message);
+      Alert.alert('Registration failed', (error as Error).message);
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
-      className="flex-1 bg-slate-950"
-      keyboardShouldPersistTaps="handled"
+    <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        style={{ backgroundColor: colors.background }}
+        keyboardShouldPersistTaps="handled"
     >
-      <View className="px-6 pb-8 pt-20">
-        <Text className="text-4xl font-extrabold text-white">Create account</Text>
-        <Text className="mt-3 text-base text-slate-300">Join Malawi&apos;s trusted rental platform.</Text>
-      </View>
-
-      <View className="rounded-t-3xl bg-white px-6 pb-10 pt-8">
-        <Text className="mb-2 text-sm font-semibold uppercase tracking-widest text-blue-700">
-          265Homes
-        </Text>
-        <Text className="mb-6 text-2xl font-bold text-slate-900">Set up your profile</Text>
-
-        <TextInput
-          placeholder="Full name"
-          placeholderTextColor="#94A3B8"
-          value={fullName}
-          onChangeText={setFullName}
-          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-        />
-        <TextInput
-          placeholder="Phone"
-          placeholderTextColor="#94A3B8"
-          value={phone}
-          keyboardType="phone-pad"
-          onChangeText={setPhone}
-          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-        />
-        <TextInput
-          placeholder="Email (optional)"
-          placeholderTextColor="#94A3B8"
-          value={email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          onChangeText={setEmail}
-          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-        />
-        <TextInput
-          placeholder="Password"
-          placeholderTextColor="#94A3B8"
-          value={password}
-          secureTextEntry
-          onChangeText={setPassword}
-          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-        />
-
-        <View className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-2">
-          <Text className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            I am joining as
-          </Text>
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              onPress={() => setRole("tenant")}
-              className={`flex-1 rounded-xl px-4 py-3 ${role === "tenant" ? "bg-blue-700" : "bg-white"}`}
-            >
-              <Text
-                className={`text-center font-semibold ${role === "tenant" ? "text-white" : "text-slate-700"}`}
-              >
-                Tenant
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setRole("landlord")}
-              className={`flex-1 rounded-xl px-4 py-3 ${role === "landlord" ? "bg-blue-700" : "bg-white"}`}
-            >
-              <Text
-                className={`text-center font-semibold ${role === "landlord" ? "text-white" : "text-slate-700"}`}
-              >
-                Landlord
-              </Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.container}>
+        <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Join Malawi's most trusted property platform.
+            </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleRegister}
-          disabled={isLoading}
-          className="rounded-xl bg-blue-700 px-4 py-4"
+        <Formik
+            initialValues={{
+                fullName: '',
+                phone: '',
+                email: '',
+                password: '',
+                role: 'tenant',
+            }}
+            validationSchema={RegisterSchema}
+            onSubmit={handleRegister}
         >
-          <Text className="text-center text-base font-semibold text-white">
-            {isLoading ? "Creating account..." : "Create account"}
-          </Text>
-        </TouchableOpacity>
+            {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
+                <View style={styles.form}>
+                    <Input 
+                        label="Full Name"
+                        placeholder="John Phiri"
+                        value={values.fullName}
+                        onChangeText={handleChange('fullName')}
+                        onBlur={handleBlur('fullName')}
+                        error={touched.fullName && errors.fullName ? errors.fullName : undefined}
+                    />
+                    <Input 
+                        label="Phone Number"
+                        placeholder="0999 123 456"
+                        value={values.phone}
+                        onChangeText={handleChange('phone')}
+                        onBlur={handleBlur('phone')}
+                        error={touched.phone && errors.phone ? errors.phone : undefined}
+                        keyboardType="phone-pad"
+                    />
+                    <Input 
+                        label="Email (Optional)"
+                        placeholder="john@example.com"
+                        value={values.email}
+                        onChangeText={handleChange('email')}
+                        onBlur={handleBlur('email')}
+                        error={touched.email && errors.email ? errors.email : undefined}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                    <Input 
+                        label="Password"
+                        placeholder="********"
+                        value={values.password}
+                        onChangeText={handleChange('password')}
+                        onBlur={handleBlur('password')}
+                        error={touched.password && errors.password ? errors.password : undefined}
+                        secureTextEntry
+                    />
 
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity className="mt-5">
-            <Text className="text-center text-sm font-medium text-blue-700">
-              Already have an account? Sign in
-            </Text>
-          </TouchableOpacity>
-        </Link>
+                    <View style={styles.roleContainer}>
+                        <Text style={[styles.roleLabel, { color: colors.textSecondary }]}>I am a:</Text>
+                        <View style={styles.roleButtons}>
+                            <TouchableOpacity 
+                                onPress={() => setFieldValue('role', 'tenant')}
+                                style={[
+                                    styles.roleButton, 
+                                    { 
+                                        backgroundColor: values.role === 'tenant' ? colors.primary : colors.surface,
+                                        borderColor: colors.border
+                                    }
+                                ]}
+                            >
+                                <Text style={[styles.roleText, { color: values.role === 'tenant' ? '#fff' : colors.textPrimary }]}>Tenant</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => setFieldValue('role', 'landlord')}
+                                style={[
+                                    styles.roleButton, 
+                                    { 
+                                        backgroundColor: values.role === 'landlord' ? colors.primary : colors.surface,
+                                        borderColor: colors.border
+                                    }
+                                ]}
+                            >
+                                <Text style={[styles.roleText, { color: values.role === 'landlord' ? '#fff' : colors.textPrimary }]}>Landlord</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <Button 
+                        title="Create Account" 
+                        onPress={() => handleSubmit()} 
+                        loading={isSubmitting}
+                        style={{ width: '100%', marginTop: spacing.md }}
+                    />
+                </View>
+            )}
+        </Formik>
+
+        <View style={styles.footer}>
+            <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
+            <Link href="/(auth)/login" asChild>
+                <TouchableOpacity>
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text>
+                </TouchableOpacity>
+            </Link>
+        </View>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: spacing.xl,
+    paddingTop: 60,
+  },
+  header: {
+    marginBottom: spacing.xl,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  form: {
+    width: '100%',
+  },
+  roleContainer: {
+    marginBottom: spacing.lg,
+  },
+  roleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  roleButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  roleText: {
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
+  },
+});

@@ -8,9 +8,24 @@ type RequestOptions = {
 
 export async function apiRequest<T>(
   path: string,
-  { method = "GET", token, body }: RequestOptions = {},
+  { method = "GET", token, body, query }: RequestOptions & { query?: Record<string, any> } = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  let url = `${API_BASE_URL}${path}`;
+  
+  if (query) {
+    const params = new URLSearchParams();
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    const queryString = params.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+  }
+
+  const response = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",

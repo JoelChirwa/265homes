@@ -1,229 +1,321 @@
-import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { router } from "expo-router";
-import { useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+// app/(app)/post-listing.tsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, FlatList, Linking } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { Formik } from 'formik';
+import * as Yup from 'yup';
+import { useAuth } from '@/src/context/AuthContext';
+import { useListings } from '@/src/context/ListingsContext';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { spacing } from '@/src/theme/spacing';
+import { Input } from '@/src/components/Input';
+import { Button } from '@/src/components/Button';
+import { GPS_MAX_ACCURACY_METERS, GPS_MAX_CAPTURE_AGE_MINUTES } from '@/src/config';
+import { GPSCapture } from '@/src/types';
 
-import { GPS_MAX_ACCURACY_METERS, GPS_MAX_CAPTURE_AGE_MINUTES } from "@/src/config";
-import { useAuth } from "@/src/context/AuthContext";
-import { useListings } from "@/src/context/ListingsContext";
-import type { GPSCapture } from "@/src/types";
+const ListingSchema = Yup.object().shape({
+  title: Yup.string().min(5, 'Title too short').required('Title is required'),
+  description: Yup.string().min(20, 'Provide more details').required('Description is required'),
+  city: Yup.string().required('City is required'),
+  area: Yup.string().required('Area is required'),
+  price: Yup.number().positive('Price must be positive').required('Price is required'),
+  rooms: Yup.number().integer().min(1, 'At least 1 room').required('Room count is required'),
+  amenitiesRaw: Yup.string(),
+  images: Yup.array().min(1, 'Add at least one photo'),
+  gps: Yup.object().required('GPS verification is required'),
+});
 
 export default function PostListingScreen() {
   const { user } = useAuth();
   const { createListing } = useListings();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [city, setCity] = useState("");
-  const [area, setArea] = useState("");
-  const [price, setPrice] = useState("");
-  const [rooms, setRooms] = useState("");
-  const [amenitiesRaw, setAmenitiesRaw] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [gps, setGps] = useState<GPSCapture | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { colors } = useTheme();
+  const router = useRouter();
 
-  if (!user || user.role !== "landlord") {
-    return null;
-  }
+  const [isCapturingGPS, setIsCapturingGPS] = useState(false);
 
-  const pickImages = async () => {
+  if (!user || user.role !== 'landlord') return null;
+
+  const pickImages = async (currentImages: string[], setFieldValue: (field: string, value: any) => void) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission required", "Please allow image library access.");
+      Alert.alert('Permission required', 'Please allow access to your photo library.');
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.7,
     });
 
-    if (result.canceled) {
-      return;
+    if (!result.canceled) {
+      setFieldValue('images', [...currentImages, ...result.assets.map(a => a.uri)]);
     }
-
-    setImages(result.assets.map((asset) => asset.uri));
   };
 
-  const captureLocation = async () => {
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Permission required", "Location permission is required.");
-      return;
+  const captureLocation = async (setFieldValue: (field: string, value: any) => void) => {
+    setIsCapturingGPS(true);
+    try {
+      const permission = await Location.getForegroundPermissionsAsync();
+      if (!permission.granted) {
+          const req = await Location.requestForegroundPermissionsAsync();
+          if (!req.granted) {
+            Alert.alert(
+                'GPS Required', 
+                '265Homes requires your physical location to verify the property.',
+                [{ text: 'Help', onPress: () => Linking.openURL('app-settings:') }, { text: 'OK' }]
+            );
+            return;
+          }
+      }
+
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const payload: GPSCapture = {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+        accuracy: current.coords.accuracy ?? 9999,
+        capturedAt: new Date().toISOString(),
+      };
+
+      if (payload.accuracy > GPS_MAX_ACCURACY_METERS) {
+        Alert.alert('Weak Signal', `Accuracy is ${Math.round(payload.accuracy)}m. Target: <${GPS_MAX_ACCURACY_METERS}m.`);
+        return;
+      }
+
+      setFieldValue('gps', payload);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to retrieve GPS. Ensure you are outdoors.');
+    } finally {
+      setIsCapturingGPS(false);
     }
-
-    const current = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-
-    const payload: GPSCapture = {
-      latitude: current.coords.latitude,
-      longitude: current.coords.longitude,
-      accuracy: current.coords.accuracy ?? 9999,
-      capturedAt: new Date().toISOString(),
-    };
-
-    if (payload.accuracy > GPS_MAX_ACCURACY_METERS) {
-      Alert.alert(
-        "GPS signal weak",
-        `Accuracy is ${Math.round(payload.accuracy)}m. Move closer and try again.`,
-      );
-      return;
-    }
-
-    setGps(payload);
   };
 
-  const submit = async () => {
-    if (!title || !description || !city || !area || !price || !rooms || !gps) {
-      Alert.alert("Missing details", "Please complete all fields and capture GPS location.");
-      return;
-    }
-
-    const captureAgeMinutes =
-      (Date.now() - new Date(gps.capturedAt).getTime()) / (1000 * 60);
+  const handlePost = async (values: any, { setSubmitting }: any) => {
+    const captureAgeMinutes = (Date.now() - new Date(values.gps.capturedAt).getTime()) / (1000 * 60);
     if (captureAgeMinutes > GPS_MAX_CAPTURE_AGE_MINUTES) {
-      Alert.alert("GPS expired", "Please capture location again before posting.");
+      Alert.alert('GPS Expired', 'Location data is too old. Please re-capture.');
+      setSubmitting(false);
       return;
     }
 
     try {
-      setIsSubmitting(true);
-      await createListing(
-        {
-          title,
-          description,
-          city,
-          area,
-          price: Number(price),
-          rooms: Number(rooms),
-          amenities: amenitiesRaw
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          images: images.length ? images : ["https://picsum.photos/900/600?random=9"],
-          landlordPhone: user.phone,
-          gps,
-        },
-        user.id,
-      );
-      Alert.alert("Success", "Listing posted successfully.");
-      router.replace("/(app)/my-listings");
+      await createListing({
+        title: values.title,
+        description: values.description,
+        city: values.city,
+        area: values.area,
+        price: Number(values.price),
+        rooms: Number(values.rooms),
+        amenities: values.amenitiesRaw.split(',').map((a: string) => a.trim()).filter(Boolean),
+        images: values.images.length ? values.images : ['https://picsum.photos/900/600?random=9'],
+        landlordPhone: user.phone,
+        gps: values.gps,
+      }, user.id);
+      Alert.alert('Success', 'Listing posted!', [{ text: 'OK', onPress: () => router.replace('/(app)/my-listings') }]);
     } catch (error) {
-      Alert.alert("Unable to post listing", (error as Error).message);
+      Alert.alert('Error', (error as Error).message);
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 px-4 pt-14" keyboardShouldPersistTaps="handled">
-      <Text className="text-3xl font-extrabold text-slate-900">Post Listing</Text>
-      <Text className="mb-4 mt-1 text-sm text-slate-500">Create a GPS-verified property listing</Text>
+    <Formik
+        initialValues={{
+            title: '',
+            description: '',
+            city: '',
+            area: '',
+            price: '',
+            rooms: '',
+            amenitiesRaw: '',
+            images: [] as string[],
+            gps: null as GPSCapture | null,
+        }}
+        validationSchema={ListingSchema}
+        onSubmit={handlePost}
+    >
+        {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
+            <ScrollView 
+                style={{ backgroundColor: colors.background }} 
+                contentContainerStyle={styles.container}
+                keyboardShouldPersistTaps="handled"
+            >
+                <View style={styles.header}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Post a Listing</Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Complete the form to reach thousands of renters.</Text>
+                </View>
 
-      <View className="rounded-2xl border border-slate-200 bg-white p-4">
-        <TextInput
-          placeholder="Title"
-          placeholderTextColor="#94A3B8"
-          value={title}
-          onChangeText={setTitle}
-          className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-        />
-        <TextInput
-          placeholder="Description"
-          placeholderTextColor="#94A3B8"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-        />
-        <TextInput
-          placeholder="City (Lilongwe, Blantyre, Mzuzu)"
-          placeholderTextColor="#94A3B8"
-          value={city}
-          onChangeText={setCity}
-          className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-        />
-        <TextInput
-          placeholder="Area"
-          placeholderTextColor="#94A3B8"
-          value={area}
-          onChangeText={setArea}
-          className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-        />
-        <View className="mb-3 flex-row gap-2">
-          <TextInput
-            placeholder="Price (MWK)"
-            placeholderTextColor="#94A3B8"
-            value={price}
-            keyboardType="numeric"
-            onChangeText={setPrice}
-            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-          />
-          <TextInput
-            placeholder="Rooms"
-            placeholderTextColor="#94A3B8"
-            value={rooms}
-            keyboardType="numeric"
-            onChangeText={setRooms}
-            className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-          />
-        </View>
-        <TextInput
-          placeholder="Amenities comma-separated"
-          placeholderTextColor="#94A3B8"
-          value={amenitiesRaw}
-          onChangeText={setAmenitiesRaw}
-          className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-        />
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Property Images</Text>
+                    <View style={styles.imagePickerRow}>
+                    <TouchableOpacity 
+                        style={[styles.imageAddButton, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+                        onPress={() => pickImages(values.images, setFieldValue)}
+                    >
+                        <Text style={{ fontSize: 24, color: colors.primary }}>+</Text>
+                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>Add</Text>
+                    </TouchableOpacity>
+                    <FlatList
+                        horizontal
+                        data={values.images}
+                        keyExtractor={uri => uri}
+                        renderItem={({ item }) => (
+                        <View style={styles.imageWrapper}>
+                            <Image source={{ uri: item }} style={styles.imagePreview} />
+                            <TouchableOpacity style={styles.removeIcon} onPress={() => setFieldValue('images', values.images.filter(i => i !== item))}>
+                                <Text style={{ color: '#fff', fontSize: 10 }}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        )}
+                        showsHorizontalScrollIndicator={false}
+                    />
+                    </View>
+                    {touched.images && errors.images && <Text style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{String(errors.images)}</Text>}
+                </View>
 
-        <TouchableOpacity
-          onPress={pickImages}
-          className="mb-3 rounded-xl border border-slate-300 bg-white px-4 py-3"
-        >
-          <Text className="font-medium text-slate-700">
-            {images.length ? `${images.length} image(s) selected` : "Select Images"}
-          </Text>
-        </TouchableOpacity>
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Basic Details</Text>
+                    <Input label="Title" value={values.title} onChangeText={handleChange('title')} onBlur={handleBlur('title')} error={touched.title && errors.title ? errors.title : undefined} />
+                    <Input label="Description" value={values.description} onChangeText={handleChange('description')} onBlur={handleBlur('description')} multiline style={{ height: 100 }} error={touched.description && errors.description ? errors.description : undefined} />
+                    <View style={styles.row}>
+                        <View style={{ flex: 1 }}><Input label="Price (MWK)" keyboardType="numeric" value={values.price} onChangeText={handleChange('price')} onBlur={handleBlur('price')} error={touched.price && errors.price ? errors.price : undefined} /></View>
+                        <View style={{ width: spacing.md }} />
+                        <View style={{ flex: 1 }}><Input label="Rooms" keyboardType="numeric" value={values.rooms} onChangeText={handleChange('rooms')} onBlur={handleBlur('rooms')} error={touched.rooms && errors.rooms ? errors.rooms : undefined} /></View>
+                    </View>
+                </View>
 
-        <TouchableOpacity
-          onPress={captureLocation}
-          className="mb-3 rounded-xl border border-blue-700 bg-blue-50 px-4 py-3"
-        >
-          <Text className="font-semibold text-blue-700">
-            {gps ? "Location Captured" : "Use Current Location"}
-          </Text>
-        </TouchableOpacity>
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Location</Text>
+                    <Input label="City" value={values.city} onChangeText={handleChange('city')} onBlur={handleBlur('city')} error={touched.city && errors.city ? errors.city : undefined} />
+                    <Input label="Area" value={values.area} onChangeText={handleChange('area')} onBlur={handleBlur('area')} error={touched.area && errors.area ? errors.area : undefined} />
+                    
+                    <View style={[styles.gpsCard, { backgroundColor: colors.surface, borderColor: values.gps ? '#4CAF50' : colors.border }]}>
+                        <View style={styles.gpsHeader}>
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>GPS Verification</Text>
+                            {values.gps && <Text style={{ color: '#4CAF50', fontSize: 12 }}>✓ Verified</Text>}
+                        </View>
+                        {values.gps ? (
+                            <View style={styles.gpsData}>
+                                <Text style={{ color: colors.textPrimary, fontSize: 13 }}>Lat: {values.gps.latitude.toFixed(6)} | Long: {values.gps.longitude.toFixed(6)}</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Accuracy: {Math.round(values.gps.accuracy)}m</Text>
+                            </View>
+                        ) : (
+                            <Text style={[styles.gpsInstruction, { color: colors.textSecondary }]}>
+                                You must be physically at the property to verify its location.
+                            </Text>
+                        )}
+                        <Button 
+                            title={isCapturingGPS ? "Capturing..." : values.gps ? "Recapture Location" : "Verify Current Location"} 
+                            onPress={() => captureLocation(setFieldValue)} 
+                            loading={isCapturingGPS}
+                            style={{ backgroundColor: values.gps ? 'transparent' : colors.primary, borderWidth: values.gps ? 1 : 0, borderColor: colors.primary }}
+                            textStyle={{ color: values.gps ? colors.primary : '#fff' }}
+                        />
+                    </View>
+                    {touched.gps && errors.gps && <Text style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{String(errors.gps)}</Text>}
+                </View>
 
-        {gps ? (
-          <View className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-            <Text className="text-xs text-emerald-700">
-              GPS: {gps.latitude.toFixed(5)}, {gps.longitude.toFixed(5)} | Accuracy:{" "}
-              {Math.round(gps.accuracy)}m
-            </Text>
-          </View>
-        ) : null}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Amenities</Text>
+                    <Input label="Amenities (Optional)" placeholder="Water, Electricity, WiFi" value={values.amenitiesRaw} onChangeText={handleChange('amenitiesRaw')} />
+                </View>
 
-        <TouchableOpacity
-          onPress={submit}
-          disabled={isSubmitting}
-          className="rounded-xl bg-blue-700 px-4 py-4"
-        >
-          <Text className="text-center text-base font-semibold text-white">
-            {isSubmitting ? "Posting..." : "Submit Listing"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <View className="h-8" />
-    </ScrollView>
+                <Button title="Post Listing" onPress={() => handleSubmit()} loading={isSubmitting} style={{ marginVertical: spacing.xl }} />
+            </ScrollView>
+        )}
+    </Formik>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: spacing.xl,
+    paddingTop: 60,
+  },
+  header: {
+    marginBottom: spacing.xl,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  imagePickerRow: {
+    flexDirection: 'row',
+  },
+  imageAddButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  imageWrapper: {
+    width: 80,
+    height: 80,
+    marginRight: spacing.sm,
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  removeIcon: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#F44336',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  row: {
+    flexDirection: 'row',
+  },
+  gpsCard: {
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+  },
+  gpsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  gpsInstruction: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: spacing.md,
+  },
+  gpsData: {
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: spacing.md,
+  },
+});

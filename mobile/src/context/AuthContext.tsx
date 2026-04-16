@@ -17,12 +17,14 @@ type AuthContextValue = {
   user: User | null;
   token: string | null;
   isBootstrapping: boolean;
+  isOnboardingCompleted: boolean;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   incrementListingView: () => Promise<void>;
   refreshSubscriptionStatus: () => Promise<void>;
   setSubscriptionPaid: () => Promise<void>;
+  completeOnboarding: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,12 +59,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const storedToken = await sessionStorage.getToken();
         const storedUser = await sessionStorage.getUser();
-        if (!isMounted || !storedToken || !storedUser) {
-          return;
+        const onboardingStatus = await sessionStorage.getOnboardingStatus();
+        
+        if (isMounted) {
+          setIsOnboardingCompleted(onboardingStatus);
+          if (storedToken && storedUser) {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser) as User);
+          }
         }
-
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser) as User);
       } finally {
         if (isMounted) {
           setIsBootstrapping(false);
@@ -75,6 +81,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  const completeOnboarding = useCallback(async () => {
+    setIsOnboardingCompleted(true);
+    await sessionStorage.saveOnboardingStatus(true);
+  }, []);
+
   const persistSession = useCallback(async (nextToken: string, nextUser: User) => {
     setToken(nextToken);
     setUser(nextUser);
@@ -86,9 +97,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const register = useCallback(
     async (payload: RegisterPayload) => {
-      const mockToken = `token-${Date.now()}`;
-      const mockUser = createMockUser(payload);
-      await persistSession(mockToken, mockUser);
+      const response = await apiRequest<{ token: string; user: User }>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      await persistSession(response.token, response.user);
       router.replace("/(app)/home");
     },
     [persistSession],
@@ -96,20 +110,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const login = useCallback(
     async (payload: LoginPayload) => {
-      const stored = await sessionStorage.getUser();
-      if (!stored) {
-        throw new Error("Account not found. Please register first.");
-      }
+      const response = await apiRequest<{ token: string; user: User }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
-      const parsed = JSON.parse(stored) as User;
-      const storedPhone = normalizePhoneNumber(parsed.phone);
-      const incomingPhone = normalizePhoneNumber(payload.phone);
-      if (storedPhone !== incomingPhone) {
-        throw new Error("Invalid credentials.");
-      }
-
-      const mockToken = `token-${Date.now()}`;
-      await persistSession(mockToken, parsed);
+      await persistSession(response.token, response.user);
       router.replace("/(app)/home");
     },
     [persistSession],
@@ -184,16 +190,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
       user,
       token,
       isBootstrapping,
+      isOnboardingCompleted,
       login,
       register,
       logout,
       incrementListingView,
       refreshSubscriptionStatus,
       setSubscriptionPaid,
+      completeOnboarding,
     }),
     [
+      completeOnboarding,
       incrementListingView,
       isBootstrapping,
+      isOnboardingCompleted,
       login,
       logout,
       refreshSubscriptionStatus,

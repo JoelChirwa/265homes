@@ -1,25 +1,25 @@
-import { Link } from "expo-router";
-import { useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-import { useAuth } from "@/src/context/AuthContext";
+// app/(auth)/login.tsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useRouter, Link } from 'expo-router';
+import { Button } from '@/src/components/Button';
+import { Input } from '@/src/components/Input';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { spacing } from '@/src/theme/spacing';
+import { useAuth } from '@/src/context/AuthContext';
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { colors } = useTheme();
   const { login } = useAuth();
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+  
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!phone || !password) {
-      Alert.alert("Missing details", "Please enter phone number and password.");
+      Alert.alert('Missing details', 'Please enter your phone number and password.');
       return;
     }
 
@@ -27,70 +27,106 @@ export default function LoginScreen() {
       setIsLoading(true);
       await login({ phone, password });
     } catch (error) {
-      Alert.alert("Login failed", (error as Error).message);
+      Alert.alert('Login failed', (error as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
-      className="flex-1 bg-slate-950"
-      keyboardShouldPersistTaps="handled"
+    <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        style={{ backgroundColor: colors.background }}
+        keyboardShouldPersistTaps="handled"
     >
-      <View className="flex-1 items-center justify-center px-6 py-10">
-        <Text className="text-5xl font-black tracking-[4px]">
-          <Text className="text-blue-500">265</Text>
-          <Text className="text-white">HOMES</Text>
-        </Text>
-        <View className="mt-3 h-1 w-20 rounded-full bg-blue-500" />
-        <Text className="mt-6 text-4xl font-extrabold text-white">Welcome back</Text>
-        <Text className="mt-3 text-center text-base text-slate-300">
-          Sign in to continue exploring trusted, GPS-verified rentals.
-        </Text>
-
-        <View className="mt-8 w-full rounded-3xl bg-white px-6 pb-8 pt-8">
-          <Text className="mb-6 text-center text-2xl font-bold text-slate-900">
-            Login to your account
-          </Text>
-
-          <TextInput
-            placeholder="Phone number (e.g. 0999123456)"
-            placeholderTextColor="#94A3B8"
-            value={phone}
-            keyboardType="phone-pad"
-            onChangeText={setPhone}
-            className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-          />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#94A3B8"
-            value={password}
-            secureTextEntry
-            onChangeText={setPassword}
-            className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900"
-          />
-
-          <TouchableOpacity
-            onPress={handleLogin}
-            disabled={isLoading}
-            className="rounded-xl bg-blue-700 px-4 py-4"
-          >
-            <Text className="text-center text-base font-semibold text-white">
-              {isLoading ? "Signing in..." : "Sign in"}
+      <View style={styles.container}>
+        <View style={styles.header}>
+            <Text style={[styles.brand, { color: colors.primary }]}>265<Text style={{ color: colors.textPrimary }}>HOMES</Text></Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Login to access verified property listings in Malawi.
             </Text>
-          </TouchableOpacity>
+        </View>
 
-          <Link href="/(auth)/register" asChild>
-            <TouchableOpacity className="mt-5">
-              <Text className="text-center text-sm font-medium text-blue-700">
-                No account? Create one
-              </Text>
-            </TouchableOpacity>
-          </Link>
+        <View style={styles.form}>
+            <Input 
+                label="Phone Number"
+                placeholder="0999 123 456"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+            />
+            <Input 
+                label="Password"
+                placeholder="********"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+            />
+
+            <Link href="/(auth)/password-reset" asChild>
+                <TouchableOpacity style={styles.forgotPassword}>
+                    <Text style={{ color: colors.primary, fontWeight: '600' }}>Forgot Password?</Text>
+                </TouchableOpacity>
+            </Link>
+
+            <Button 
+                title="Login" 
+                onPress={handleLogin} 
+                loading={isLoading}
+                style={{ width: '100%', marginTop: spacing.md }}
+            />
+        </View>
+
+        <View style={styles.footer}>
+            <Text style={{ color: colors.textSecondary }}>Don't have an account? </Text>
+            <Link href="/(auth)/register" asChild>
+                <TouchableOpacity>
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>Register Now</Text>
+                </TouchableOpacity>
+            </Link>
         </View>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: spacing.xl,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing.xxl,
+  },
+  brand: {
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: spacing.sm,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  form: {
+    width: '100%',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.md,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+  },
+});

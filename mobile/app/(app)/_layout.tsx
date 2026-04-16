@@ -1,18 +1,14 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
-
 import { useAuth } from "@/src/context/AuthContext";
+import { useTheme } from "@/src/theme/ThemeProvider";
 
 export default function AppLayout() {
   const { user, isBootstrapping } = useAuth();
+  const { colors } = useTheme();
 
-  if (isBootstrapping) {
-    return null;
-  }
-
-  if (!user) {
-    return <Redirect href="/(auth)/login" />;
-  }
+  if (isBootstrapping) return null;
+  if (!user) return <Redirect href="/(auth)/login" />;
 
   const isLandlord = user.role === "landlord";
 
@@ -20,19 +16,22 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#1D4ED8",
-        tabBarInactiveTintColor: "#64748B",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          height: 64,
-          paddingTop: 8,
-          paddingBottom: 8,
-          borderTopWidth: 0,
-          backgroundColor: "#FFFFFF",
-          elevation: 10,
+          height: 80,
+          paddingTop: 12,
+          paddingBottom: 24,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          backgroundColor: colors.surface,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
+          fontSize: 11,
+          fontWeight: "700",
+          marginTop: 4,
         },
       }}
     >
@@ -40,42 +39,52 @@ export default function AppLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <FontAwesome name="home" color={color} size={size} />,
+          tabBarIcon: ({ color }) => <FontAwesome name="home" color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: "Explore",
-          href: isLandlord ? null : undefined,
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="search" color={color} size={size} />
-          ),
+          href: isLandlord ? null : "/(app)/explore",
+          tabBarIcon: ({ color }) => <FontAwesome name="search" color={color} size={20} />,
         }}
       />
       <Tabs.Screen
         name="post-listing"
         options={{
-          title: "Post Listings",
-          href: isLandlord ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="plus-square" color={color} size={size} />
-          ),
+          title: "Post",
+          href: !isLandlord ? null : "/(app)/post-listing",
+          tabBarIcon: ({ color }) => <FontAwesome name="plus-circle" color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="my-listings"
         options={{
-          title: "My Listings",
-          href: null,
-          tabBarIcon: ({ color, size }) => <FontAwesome name="list" color={color} size={size} />,
+          title: "Listings",
+          href: !isLandlord ? null : "/(app)/my-listings",
+          tabBarIcon: ({ color }) => <FontAwesome name="list-ul" color={color} size={20} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <FontAwesome name="user" color={color} size={size} />,
+          tabBarIcon: ({ color }) => <FontAwesome name="user-circle" color={color} size={20} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color }) => <FontAwesome name="cog" color={color} size={20} />,
+        }}
+      />
+      <Tabs.Screen
+        name="subscription"
+        options={{
+          href: null,
+          title: "Subscription",
         }}
       />
     </Tabs>

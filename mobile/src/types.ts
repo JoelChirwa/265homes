@@ -47,6 +47,8 @@ export type Listing = {
   landlordId: string;
   landlordPhone: string;
   isDeleted: boolean;
+  isVerified?: boolean;
+  status: 'active' | 'suspended' | 'deleted_by_landlord';
   createdAt: string;
   gps: GPSCapture;
 };

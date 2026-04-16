@@ -1,136 +1,214 @@
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Link } from "expo-router";
-import { Alert, useState } from "react";
-
-import { apiRequest } from "@/src/lib/api";
-import { useAuth } from "@/src/context/AuthContext";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/src/context/AuthContext';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { spacing } from '@/src/theme/spacing';
+import { Button } from '@/src/components/Button';
+import { Link } from 'expo-router';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   const { user, logout, refreshSubscriptionStatus } = useAuth();
-  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
+  const { colors } = useTheme();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  const initials = user.fullName
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  const roleLabel = user.role === "landlord" ? "Landlord" : "Tenant";
-  const subscriptionLabel =
-    user.role === "landlord" ? "FREE" : user.subscriptionStatus.toUpperCase();
-  const emailLabel = user.email ?? "No email provided";
-  const isTenantPaid = user.subscriptionStatus === "paid";
+  const isTenant = user.role === 'tenant';
+  const isPaid = user.subscriptionStatus === 'paid';
 
-  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const handlePaySubscription = async () => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      setIsInitiatingPayment(true);
-      const response = await apiRequest<{
-        message: string;
-        reference: string;
-      }>("/payments/mobile-money/charge", {
-        method: "POST",
-        body: {
-          userId: user.id,
-          phone: user.phone,
-          amount: 5000,
-          currency: "MWK",
-        },
-      });
-
-      Alert.alert(
-        "Payment Started",
-        `${response.message}\nReference: ${response.reference}`,
-      );
-
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        await sleep(5000);
         await refreshSubscriptionStatus();
-      }
-    } catch (error) {
-      Alert.alert("Payment failed", (error as Error).message);
     } finally {
-      setIsInitiatingPayment(false);
+        setIsRefreshing(false);
     }
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 px-4 pt-14" contentContainerStyle={{ paddingBottom: 24 }}>
-      <Text className="text-3xl font-extrabold text-slate-900">Profile</Text>
-      <Text className="mt-1 text-sm text-slate-500">Manage your account and subscription details</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+        >
+        <View style={styles.header}>
+            <View style={[styles.avatar, { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary }]}>
+                <FontAwesome name="user-circle" size={80} color={colors.primary} />
+            </View>
+            <Text style={[styles.name, { color: colors.textPrimary }]}>{user.fullName}</Text>
+            <Text style={[styles.email, { color: colors.textSecondary }]}>{user.email || 'No email set'}</Text>
+            <View style={[styles.badge, { backgroundColor: isPaid ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 152, 0, 0.1)', flexDirection: 'row', alignItems: 'center' }]}>
+                <Ionicons name={isPaid ? "diamond" : "star-outline"} size={12} color={isPaid ? "#4CAF50" : "#FF9800"} style={{ marginRight: 4 }} />
+                <Text style={[styles.badgeText, { color: isPaid ? '#4CAF50' : '#FF9800' }]}>
+                    {user.subscriptionStatus.toUpperCase()}
+                </Text>
+            </View>
+        </View>
 
-      <View className="mt-5 rounded-2xl bg-slate-900 p-5">
-        <View className="flex-row items-center">
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-blue-700">
-            <Text className="text-lg font-bold text-white">{initials}</Text>
-          </View>
-          <View className="ml-3 flex-1">
-            <Text className="text-2xl font-extrabold text-white">{user.fullName}</Text>
-            <Text className="mt-1 text-sm text-slate-300">{emailLabel}</Text>
-          </View>
+        <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account Info</Text>
+                <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing}>
+                    {isRefreshing ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="refresh" size={16} color={colors.primary} />}
+                </TouchableOpacity>
+            </View>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.row}>
+                    <Text style={{ color: colors.textSecondary }}>Phone</Text>
+                    <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{user.phone}</Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.row}>
+                    <Text style={{ color: colors.textSecondary }}>Role</Text>
+                    <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{user.role === 'landlord' ? 'Landlord' : 'Tenant'}</Text>
+                </View>
+            </View>
         </View>
-        <Text className="mt-4 text-sm text-slate-300">{user.phone}</Text>
-      </View>
 
-      <View className="mt-4 flex-row gap-3">
-        <View className="flex-1 rounded-2xl border border-slate-200 bg-white p-4">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">Role</Text>
-          <Text className="mt-2 text-lg font-bold text-slate-900">{roleLabel}</Text>
-        </View>
-        <View className="flex-1 rounded-2xl border border-slate-200 bg-white p-4">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan</Text>
-          <Text className="mt-2 text-lg font-bold text-blue-700">{subscriptionLabel}</Text>
-        </View>
-      </View>
+        {isTenant && (
+            <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Usage Stats</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.usageHeader}>
+                    <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Listing Views</Text>
+                    <Text style={{ color: colors.textPrimary }}>{user.listingViewsUsed} / {user.listingViewsLimit}</Text>
+                </View>
+                <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                    <View 
+                        style={[
+                            styles.progressBarFill, 
+                            { 
+                                backgroundColor: colors.primary, 
+                                width: `${Math.min((user.listingViewsUsed / user.listingViewsLimit) * 100, 100)}%` 
+                            }
+                        ]} 
+                    />
+                </View>
+                {Platform.OS !== "web" && (
+                    <Link href="/(app)/subscription" asChild>
+                        <Button 
+                            title="Manage Subscription" 
+                            variant="primary"
+                            style={{ marginTop: spacing.md }}
+                        />
+                    </Link>
+                )}
+            </View>
+            </View>
+        )}
 
-      {user.role === "tenant" ? (
-        <View className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Subscription
-          </Text>
-          <Text className="mt-2 text-base font-semibold text-slate-900">
-            Tenants must pay subscription fee to view listings.
-          </Text>
-          <TouchableOpacity
-            onPress={handlePaySubscription}
-            disabled={isInitiatingPayment || isTenantPaid}
-            className={`mt-4 rounded-xl px-4 py-4 ${isTenantPaid ? "bg-slate-300" : "bg-emerald-600"}`}
-          >
-            <Text className="text-center text-base font-semibold text-white">
-              {isTenantPaid
-                ? "Subscription Active"
-                : isInitiatingPayment
-                  ? "Initiating Payment..."
-                  : "Pay Subscription Fee"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Landlord Plan
-          </Text>
-          <Text className="mt-2 text-base font-semibold text-emerald-900">
-            Landlords post and manage listings for free.
-          </Text>
-          <Link href="/(app)/my-listings" asChild>
-            <TouchableOpacity className="mt-4 rounded-xl border border-emerald-300 bg-white px-4 py-4">
-              <Text className="text-center text-base font-semibold text-emerald-700">
-                Manage My Listings
-              </Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
+        {user.role === 'landlord' && (
+            <View style={styles.section}>
+                <Link href="/(app)/my-listings" asChild>
+                    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="list-circle-outline" size={24} color={colors.primary} style={{ marginRight: 12 }} />
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Manage My Listings</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                </Link>
+            </View>
+        )}
 
-      <TouchableOpacity onPress={logout} className="mt-4 rounded-xl bg-red-600 px-4 py-4">
-        <Text className="text-center text-base font-semibold text-white">Log out</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button 
+            title="Logout" 
+            onPress={logout} 
+            variant="danger"
+            style={{ marginTop: spacing.xl, marginBottom: 100 }}
+        />
+        </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: spacing.xl,
+    paddingTop: 60,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing.xxl,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 16,
+    marginBottom: spacing.sm,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  section: {
+    marginBottom: spacing.xl,
+  },
+  sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  card: {
+    borderRadius: 16,
+    padding: spacing.md,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 4,
+  },
+  usageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+});
